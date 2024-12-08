@@ -186,11 +186,28 @@ app.post('/api/logs', authenticateToken, (req, res) => {
       pdfDataLength: req.body.pdfData?.length
     });
 
+    // Validate required fields
+    if (!req.body.workOrderNumber || !req.body.operator || !req.body.testDate) {
+      console.error('Missing required fields:', { body: req.body });
+      return res.status(400).json({
+        success: false,
+        error: 'Missing required fields'
+      });
+    }
+
     if (!req.body.serialEntries || !Array.isArray(req.body.serialEntries)) {
       console.error('Invalid serial entries:', req.body.serialEntries);
       return res.status(400).json({
         success: false,
         error: 'Invalid serial entries format'
+      });
+    }
+
+    if (!req.body.pdfData) {
+      console.error('Missing PDF data');
+      return res.status(400).json({
+        success: false,
+        error: 'Missing PDF data'
       });
     }
 
@@ -206,6 +223,11 @@ app.post('/api/logs', authenticateToken, (req, res) => {
     // Insert each serial number as a separate row
     const results = req.body.serialEntries.map(entry => {
       try {
+        console.log('Inserting serial entry:', {
+          workOrderNumber: req.body.workOrderNumber,
+          serialNumber: entry.serialNumber
+        });
+
         const result = stmt.run(
           req.body.workOrderNumber,
           req.body.operator,
@@ -214,15 +236,18 @@ app.post('/api/logs', authenticateToken, (req, res) => {
           req.body.pdfData,
           now
         );
+
         console.log('Successfully saved serial entry:', {
           serialNumber: entry.serialNumber,
           lastInsertRowid: result.lastInsertRowid
         });
+
         return result;
       } catch (error) {
         console.error('Error saving serial entry:', {
           serialNumber: entry.serialNumber,
-          error: error.message
+          error: error.message,
+          stack: error.stack
         });
         throw error;
       }
@@ -241,7 +266,11 @@ app.post('/api/logs', authenticateToken, (req, res) => {
       actualCount: savedEntries.length
     });
 
-    res.json({ success: true, results });
+    res.json({ 
+      success: true, 
+      results,
+      savedCount: savedEntries.length
+    });
   } catch (error) {
     console.error('Error in /api/logs:', error);
     res.status(500).json({ 

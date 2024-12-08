@@ -28,11 +28,14 @@ export default function NewTestLog() {
     partNumber: '',
     testDate: format(new Date(), 'yyyy-MM-dd'),
     testVoltage: '240V',
+    serialEntries: []
   });
 
   const [serialEntries, setSerialEntries] = useState<SerialEntry[]>([
     { serialNumber: '', testResults: DEFAULT_TEST_RESULTS },
   ]);
+
+  const [loading, setLoading] = useState(false);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -64,10 +67,26 @@ export default function NewTestLog() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-
+    setLoading(true);
+    
     try {
-      // Filter out empty serial entries
-      const validEntries = serialEntries.filter(entry => entry.serialNumber.trim());
+      console.log('Starting form submission...', {
+        workOrderNumber: formData.workOrderNumber,
+        operator: formData.operator,
+        testDate: formData.testDate,
+        serialEntriesCount: serialEntries.length
+      });
+
+      // Validate form data
+      if (!formData.workOrderNumber || !formData.operator || !formData.testDate) {
+        alert('Please fill in all required fields');
+        return;
+      }
+
+      // Filter out empty serial numbers
+      const validEntries = serialEntries.filter(
+        entry => entry.serialNumber.trim() !== ''
+      );
       
       if (validEntries.length === 0) {
         alert('Please enter at least one serial number.');
@@ -79,32 +98,37 @@ export default function NewTestLog() {
         serialEntries: validEntries,
       };
 
+      console.log('Generating PDF...', { workOrder });
+
       // Generate PDF and convert to base64
       const pdf = await generatePDF(workOrder);
       const pdfBlob = pdf.output('blob');
       
+      console.log('PDF generated successfully');
+
       const pdfData = await new Promise<string>((resolve) => {
         const reader = new FileReader();
         reader.onloadend = () => resolve(reader.result as string);
         reader.readAsDataURL(pdfBlob);
       });
 
-      // Save to database
-      const success = await savePdfToDatabase(workOrder, pdfData);
+      console.log('PDF converted to base64');
 
-      if (!success) {
-        throw new Error('Failed to save work order');
+      // Save to database
+      console.log('Saving to database...');
+      const response = await savePdfToDatabase(workOrder, pdfData);
+
+      if (!response.success) {
+        throw new Error(response.error || 'Failed to save work order');
       }
 
+      console.log('Save successful:', response);
       navigate('/logs');
     } catch (error) {
       console.error('Error saving work order:', error);
-      if (error instanceof Error && error.message.includes('Authentication failed')) {
-        alert('Session expired. Please log in again.');
-        navigate('/login');
-      } else {
-        alert('Error saving work order. Please try again.');
-      }
+      alert(`Error saving work order: ${error.message}`);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -265,9 +289,9 @@ export default function NewTestLog() {
         </div>
 
         <div className="flex justify-end">
-          <Button type="submit">
+          <Button type="submit" disabled={loading}>
             <Save className="mr-2 h-5 w-5" />
-            Save Work Order
+            {loading ? 'Saving...' : 'Save Work Order'}
           </Button>
         </div>
       </form>
