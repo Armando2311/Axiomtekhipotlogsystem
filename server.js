@@ -138,9 +138,6 @@ app.post('/api/auth/login', async (req, res) => {
   }
 });
 
-// Serve static files from the React app
-app.use(express.static(join(__dirname, 'dist')));
-
 // Debug route to check database contents
 app.get('/api/debug/logs', (req, res) => {
   try {
@@ -319,11 +316,6 @@ app.delete('/api/logs/:id', authenticateToken, (req, res) => {
       error: error.message 
     });
   }
-});
-
-// Serve React app for all other routes
-app.get('*', (req, res) => {
-  res.sendFile(join(__dirname, 'dist', 'index.html'));
 });
 
 app.listen(PORT, '0.0.0.0', () => {
