@@ -66,7 +66,12 @@ console.log('Verified admin user exists:', !!verifyAdmin);
 
 // Middleware
 app.use(cors({
-  origin: ['http://localhost:8080', 'http://localhost:5173'],
+  origin: [
+    'http://localhost:8080',
+    'http://localhost:5173',
+    'http://192.168.0.223:8080',
+    'http://192.168.0.223:5173'
+  ],
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization']
@@ -75,6 +80,7 @@ app.use(cors({
 // Increase payload size limit for PDF data
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
+app.use(bodyParser.json({ limit: '50mb' }));
 
 // Debug middleware to log all requests
 app.use((req, res, next) => {
@@ -82,6 +88,7 @@ app.use((req, res, next) => {
     headers: req.headers,
     contentType: req.headers['content-type'],
     contentLength: req.headers['content-length'],
+    origin: req.headers.origin,
     body: req.method === 'POST' ? req.body : undefined
   });
   next();
@@ -100,23 +107,24 @@ const authenticateToken = (req, res, next) => {
     });
   }
 
-  try {
-    const decoded = jwt.verify(token, JWT_SECRET);
-    req.user = decoded; // Store decoded user info in request
-    next();
-  } catch (err) {
-    console.error('Token verification failed:', err);
-    if (err.name === 'TokenExpiredError') {
-      return res.status(401).json({ 
-        message: 'Token expired',
-        code: 'TOKEN_EXPIRED'
+  jwt.verify(token, JWT_SECRET, (err, user) => {
+    if (err) {
+      console.error('Token verification failed:', err);
+      if (err.name === 'TokenExpiredError') {
+        return res.status(401).json({
+          message: 'Token expired',
+          code: 'TOKEN_EXPIRED'
+        });
+      }
+      return res.status(403).json({
+        message: 'Invalid token',
+        code: 'INVALID_TOKEN'
       });
     }
-    return res.status(403).json({ 
-      message: 'Invalid token',
-      code: 'INVALID_TOKEN'
-    });
-  }
+
+    req.user = user;
+    next();
+  });
 };
 
 // Basic health check endpoint
@@ -130,32 +138,45 @@ app.get('/', (req, res) => {
 
 // Auth routes
 app.post('/api/auth/login', async (req, res) => {
-  const { username, password } = req.body;
-  console.log('Login attempt:', { username });
-
   try {
+    console.log('Login attempt:', {
+      username: req.body.username,
+      hasPassword: !!req.body.password,
+      origin: req.headers.origin
+    });
+
+    const { username, password } = req.body;
     const user = db.prepare('SELECT * FROM users WHERE username = ?').get(username);
-    console.log('User found:', !!user);
 
-    if (!user) {
-      console.log('User not found');
-      return res.status(401).json({ message: 'Invalid credentials' });
+    if (!user || !bcrypt.compareSync(password, user.password)) {
+      console.log('Login failed: Invalid credentials');
+      return res.status(401).json({
+        success: false,
+        message: 'Invalid username or password'
+      });
     }
 
-    const validPassword = bcrypt.compareSync(password, user.password);
-    console.log('Password valid:', validPassword);
+    const token = jwt.sign(
+      { id: user.id, username: user.username },
+      JWT_SECRET,
+      { expiresIn: '24h' }
+    );
 
-    if (!validPassword) {
-      console.log('Invalid password');
-      return res.status(401).json({ message: 'Invalid credentials' });
-    }
+    console.log('Login successful:', {
+      username: user.username,
+      origin: req.headers.origin
+    });
 
-    const token = jwt.sign({ userId: user.id }, JWT_SECRET, { expiresIn: '24h' });
-    console.log('Token generated successfully');
-    res.json({ token });
+    res.json({
+      success: true,
+      token: token
+    });
   } catch (error) {
     console.error('Login error:', error);
-    res.status(500).json({ message: 'Server error', error: error.message });
+    res.status(500).json({
+      success: false,
+      message: 'Internal server error'
+    });
   }
 });
 

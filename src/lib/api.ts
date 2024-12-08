@@ -8,7 +8,10 @@ export interface PdfLog {
 }
 
 // Local development with Nginx
-const API_BASE = 'http://localhost:8080';
+const API_BASE = window.location.hostname === 'localhost' 
+  ? 'http://localhost:8080' 
+  : `http://${window.location.hostname}:8080`;
+
 export const API_BASE_URL = `${API_BASE}/api`;
 
 console.log('Using API URL:', API_BASE_URL); // This will help us debug
