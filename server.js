@@ -64,21 +64,28 @@ if (!adminUser) {
 const verifyAdmin = db.prepare('SELECT * FROM users WHERE username = ?').get('admin');
 console.log('Verified admin user exists:', !!verifyAdmin);
 
-// Configure CORS
-const corsOptions = {
-  origin: [
-    'http://localhost:5173',
-    'https://1f6d-2600-1000-a109-4749-dc72-4e30-2e36-88cd.ngrok-free.app',
-    'https://hipot-test-log.netlify.app'
-  ],
+// Middleware
+app.use(cors({
+  origin: ['http://localhost:8080', 'http://localhost:5173'],
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization']
-};
+}));
 
-app.use(cors(corsOptions));
+// Increase payload size limit for PDF data
 app.use(express.json({ limit: '50mb' }));
-app.use(bodyParser.json({ limit: '50mb' }));
+app.use(express.urlencoded({ extended: true, limit: '50mb' }));
+
+// Debug middleware to log all requests
+app.use((req, res, next) => {
+  console.log(`${req.method} ${req.url}`, {
+    headers: req.headers,
+    contentType: req.headers['content-type'],
+    contentLength: req.headers['content-length'],
+    body: req.method === 'POST' ? req.body : undefined
+  });
+  next();
+});
 
 // Authentication middleware
 const authenticateToken = (req, res, next) => {
@@ -190,19 +197,50 @@ app.get('/api/debug/logs', (req, res) => {
 });
 
 // Protected API routes
-app.post('/api/logs', authenticateToken, (req, res) => {
+app.get('/logs', authenticateToken, (req, res) => {
+  try {
+    console.log('Fetching all logs...');
+    const logs = db.prepare(`
+      SELECT id, work_order_number, operator, test_date, serial_number, created_at, pdf_data
+      FROM pdf_logs
+      ORDER BY created_at DESC
+    `).all();
+
+    console.log(`Found ${logs.length} logs`);
+    res.json({
+      success: true,
+      logs: logs.map(log => ({
+        ...log,
+        created_at: new Date(log.created_at).toISOString()
+      }))
+    });
+  } catch (error) {
+    console.error('Error fetching logs:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
+app.post('/logs', authenticateToken, (req, res) => {
   try {
     console.log('Received work order save request:', {
       workOrderNumber: req.body.workOrderNumber,
       operator: req.body.operator,
       testDate: req.body.testDate,
       serialCount: req.body.serialEntries?.length,
-      pdfDataLength: req.body.pdfData?.length
+      pdfDataLength: req.body.pdfData?.length,
+      contentType: req.headers['content-type']
     });
 
     // Validate required fields
     if (!req.body.workOrderNumber || !req.body.operator || !req.body.testDate) {
-      console.error('Missing required fields:', { body: req.body });
+      console.error('Missing required fields:', {
+        workOrderNumber: !req.body.workOrderNumber,
+        operator: !req.body.operator,
+        testDate: !req.body.testDate
+      });
       return res.status(400).json({
         success: false,
         error: 'Missing required fields'
@@ -210,7 +248,9 @@ app.post('/api/logs', authenticateToken, (req, res) => {
     }
 
     if (!req.body.serialEntries || !Array.isArray(req.body.serialEntries)) {
-      console.error('Invalid serial entries:', req.body.serialEntries);
+      console.error('Invalid serial entries:', {
+        serialEntries: req.body.serialEntries
+      });
       return res.status(400).json({
         success: false,
         error: 'Invalid serial entries format'
@@ -225,19 +265,24 @@ app.post('/api/logs', authenticateToken, (req, res) => {
       });
     }
 
+    // Insert the log for each serial number
     const stmt = db.prepare(`
       INSERT INTO pdf_logs (
-        work_order_number, operator, test_date, serial_number,
-        pdf_data, created_at
+        work_order_number,
+        operator,
+        test_date,
+        serial_number,
+        pdf_data,
+        created_at
       ) VALUES (?, ?, ?, ?, ?, ?)
     `);
 
     const now = new Date().toISOString();
-    
-    // Insert each serial number as a separate row
-    const results = req.body.serialEntries.map(entry => {
+    const results = [];
+
+    for (const entry of req.body.serialEntries) {
       try {
-        console.log('Inserting serial entry:', {
+        console.log('Inserting entry:', {
           workOrderNumber: req.body.workOrderNumber,
           serialNumber: entry.serialNumber
         });
@@ -251,112 +296,61 @@ app.post('/api/logs', authenticateToken, (req, res) => {
           now
         );
 
-        console.log('Successfully saved serial entry:', {
+        results.push(result);
+        console.log('Successfully inserted entry:', {
+          workOrderNumber: req.body.workOrderNumber,
           serialNumber: entry.serialNumber,
           lastInsertRowid: result.lastInsertRowid
         });
-
-        return result;
       } catch (error) {
-        console.error('Error saving serial entry:', {
+        console.error('Error inserting entry:', {
+          workOrderNumber: req.body.workOrderNumber,
           serialNumber: entry.serialNumber,
-          error: error.message,
-          stack: error.stack
+          error: error.message
         });
         throw error;
       }
-    });
+    }
 
-    // Verify the saved entries
-    const savedEntries = db.prepare(`
-      SELECT * FROM pdf_logs 
-      WHERE work_order_number = ? 
-      ORDER BY created_at DESC
-    `).all(req.body.workOrderNumber);
-
-    console.log('Verification of saved entries:', {
+    console.log('Successfully saved all entries:', {
       workOrderNumber: req.body.workOrderNumber,
-      expectedCount: req.body.serialEntries.length,
-      actualCount: savedEntries.length
+      count: results.length
     });
 
-    res.json({ 
-      success: true, 
-      results,
-      savedCount: savedEntries.length
+    res.json({
+      success: true,
+      results: results
     });
   } catch (error) {
-    console.error('Error in /api/logs:', error);
-    res.status(500).json({ 
-      success: false, 
-      error: error.message,
-      stack: error.stack
-    });
-  }
-});
-
-app.get('/api/logs', authenticateToken, (req, res) => {
-  try {
-    console.log('Fetching logs...');
-    const logs = db.prepare(`
-      SELECT 
-        id, work_order_number, operator, test_date, 
-        serial_number, pdf_data, created_at
-      FROM pdf_logs 
-      ORDER BY created_at DESC
-    `).all();
-
-    // Transform the logs but keep PDF data as is since it's already a data URL
-    const transformedLogs = logs.map(log => ({
-      id: log.id,
-      work_order_number: log.work_order_number,
-      operator: log.operator,
-      test_date: log.test_date,
-      serial_number: log.serial_number,
-      pdf_data: log.pdf_data,
-      created_at: log.created_at
-    }));
-
-    console.log('Fetched logs:', {
-      count: transformedLogs.length,
-      sample: transformedLogs.slice(0, 2).map(log => ({
-        ...log,
-        pdf_data: log.pdf_data ? 'PDF data available' : null
-      }))
-    });
-
-    res.json(transformedLogs);
-  } catch (error) {
-    console.error('Error fetching logs:', error);
-    res.status(500).json({ 
-      success: false, 
+    console.error('Error saving log:', error);
+    res.status(500).json({
+      success: false,
       error: error.message
     });
   }
 });
 
-// Delete log endpoint
-app.delete('/api/logs/:id', authenticateToken, (req, res) => {
+app.delete('/logs/:id', authenticateToken, (req, res) => {
   try {
-    const { id } = req.params;
-    console.log('Deleting log:', { id });
-    
-    const result = db.prepare('DELETE FROM pdf_logs WHERE id = ?').run(id);
+    console.log('Deleting log:', req.params.id);
+    const result = db.prepare('DELETE FROM pdf_logs WHERE id = ?').run(req.params.id);
     
     if (result.changes === 0) {
-      return res.status(404).json({ 
-        success: false, 
-        error: 'Log not found' 
+      return res.status(404).json({
+        success: false,
+        error: 'Log not found'
       });
     }
 
-    console.log('Successfully deleted log:', { id });
-    res.json({ success: true });
+    res.json({
+      success: true,
+      message: 'Log deleted successfully'
+    });
   } catch (error) {
     console.error('Error deleting log:', error);
-    res.status(500).json({ 
-      success: false, 
-      error: error.message 
+    res.status(500).json({
+      success: false,
+      error: error.message
     });
   }
 });

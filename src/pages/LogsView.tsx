@@ -44,12 +44,13 @@ export default function LogsView() {
       }
 
       const data = await response.json();
-      console.log('Received logs:', {
-        count: data.length,
-        sample: data.slice(0, 2)
-      });
-      setLogs(data);
-      setError('');
+      console.log('Received logs:', data);
+      
+      if (data.success) {
+        setLogs(data.logs || []);
+      } else {
+        throw new Error(data.error || 'Failed to fetch logs');
+      }
     } catch (err) {
       console.error('Error fetching logs:', err);
       setError(err instanceof Error ? err.message : 'Failed to fetch logs');

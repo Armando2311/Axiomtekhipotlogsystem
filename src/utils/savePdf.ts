@@ -18,13 +18,20 @@ export async function savePdfToDatabase(workOrder: WorkOrder, pdfData: string) {
       pdfData: pdfData
     });
 
+    if (!response || !response.success) {
+      throw new Error(response?.error || 'Failed to save work order');
+    }
+
     console.log('Successfully saved work order:', response);
-    return true;
+    return response;
   } catch (error) {
     console.error('Error saving PDF to database:', error);
-    if (error instanceof Error && error.message.includes('401')) {
-      throw new Error('Authentication failed. Please log in again.');
+    if (error instanceof Error) {
+      if (error.message.includes('401')) {
+        throw new Error('Authentication failed. Please log in again.');
+      }
+      throw error;
     }
-    throw error;
+    throw new Error('Failed to save work order');
   }
 }

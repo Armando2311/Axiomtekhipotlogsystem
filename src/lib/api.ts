@@ -7,8 +7,8 @@ export interface PdfLog {
   pdfData: string;
 }
 
-// Get the API URL from environment variables, remove /api suffix as it's added in the URL construction
-const API_BASE = import.meta.env.VITE_API_URL?.replace(/\/api$/, '') || import.meta.env.VITE_API_BASE_URL || 'http://localhost:3002';
+// Local development with Nginx
+const API_BASE = 'http://localhost:8080';
 export const API_BASE_URL = `${API_BASE}/api`;
 
 console.log('Using API URL:', API_BASE_URL); // This will help us debug
@@ -24,7 +24,7 @@ function getAuthHeaders() {
   };
 }
 
-export async function savePdfLog(log: PdfLog): Promise<PdfLog> {
+export async function savePdfLog(log: PdfLog): Promise<{ success: boolean; error?: string; results?: any }> {
   try {
     console.log('Sending PDF log to server:', {
       workOrderNumber: log.workOrderNumber,
@@ -41,30 +41,33 @@ export async function savePdfLog(log: PdfLog): Promise<PdfLog> {
     });
 
     const data = await response.json();
+    console.log('Server response:', data);
 
     if (!response.ok) {
-      // Only clear token for specific authentication errors
-      if (response.status === 401 && data.code === 'TOKEN_EXPIRED') {
+      // Handle authentication errors
+      if (response.status === 401) {
         localStorage.removeItem('auth_token');
-        throw new Error('Authentication failed: Token expired');
+        throw new Error('Authentication failed: Please log in again');
       }
       
-      if (response.status === 403 && data.code === 'INVALID_TOKEN') {
+      if (response.status === 403) {
         localStorage.removeItem('auth_token');
         throw new Error('Authentication failed: Invalid token');
       }
 
-      throw new Error(`Failed to save PDF log: ${response.status} - ${JSON.stringify(data)}`);
+      throw new Error(data.error || `Server error: ${response.status}`);
     }
 
-    console.log('Successfully saved PDF log:', {
-      success: data.success,
+    return {
+      success: true,
       results: data.results
-    });
-    return data;
+    };
   } catch (error) {
     console.error('Error saving PDF log:', error);
-    throw error;
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Unknown error occurred'
+    };
   }
 }
 
