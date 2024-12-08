@@ -12,8 +12,8 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
 const app = express();
-const port = 3002;
-const JWT_SECRET = 'your-secret-key'; // In production, use an environment variable
+const PORT = process.env.PORT || 3002;
+const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key'; // In production, use an environment variable
 
 // Initialize database
 console.log('Initializing database...');
@@ -65,7 +65,14 @@ const verifyAdmin = db.prepare('SELECT * FROM users WHERE username = ?').get('ad
 console.log('Verified admin user exists:', !!verifyAdmin);
 
 // Middleware
-app.use(cors());
+app.use(cors({
+  origin: [
+    'http://localhost:5173',
+    'http://localhost:3000',
+    'https://axiomtekhipotlogsystem.netlify.app'
+  ],
+  credentials: true
+}));
 app.use(bodyParser.json({ limit: '50mb' }));
 
 // Authentication middleware
@@ -319,8 +326,8 @@ app.get('*', (req, res) => {
   res.sendFile(join(__dirname, 'dist', 'index.html'));
 });
 
-app.listen(port, '0.0.0.0', () => {
-  console.log(`Server is running on port ${port}`);
+app.listen(PORT, '0.0.0.0', () => {
+  console.log(`Server is running on port ${PORT}`);
   console.log('Default credentials:');
   console.log('Username: admin');
   console.log('Password: admin');
