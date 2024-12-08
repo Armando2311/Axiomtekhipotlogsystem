@@ -3,10 +3,10 @@ import cors from 'cors';
 import Database from 'better-sqlite3';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
-import bodyParser from 'body-parser';
 import jwt from 'jsonwebtoken';
 import bcrypt from 'bcryptjs';
 import fs from 'fs';
+import bodyParser from 'body-parser';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -64,15 +64,20 @@ if (!adminUser) {
 const verifyAdmin = db.prepare('SELECT * FROM users WHERE username = ?').get('admin');
 console.log('Verified admin user exists:', !!verifyAdmin);
 
-// Middleware
-app.use(cors({
+// Configure CORS
+const corsOptions = {
   origin: [
     'http://localhost:5173',
-    'http://localhost:3000',
-    'https://axiomtekhipotlogsystem.netlify.app'
+    'https://1f6d-2600-1000-a109-4749-dc72-4e30-2e36-88cd.ngrok-free.app',
+    'https://hipot-test-log.netlify.app'
   ],
-  credentials: true
-}));
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization']
+};
+
+app.use(cors(corsOptions));
+app.use(express.json({ limit: '50mb' }));
 app.use(bodyParser.json({ limit: '50mb' }));
 
 // Authentication middleware
@@ -106,6 +111,15 @@ const authenticateToken = (req, res, next) => {
     });
   }
 };
+
+// Basic health check endpoint
+app.get('/', (req, res) => {
+  res.json({ 
+    status: 'ok',
+    message: 'Server is running',
+    timestamp: new Date().toISOString()
+  });
+});
 
 // Auth routes
 app.post('/api/auth/login', async (req, res) => {

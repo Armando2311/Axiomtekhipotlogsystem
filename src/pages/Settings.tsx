@@ -4,6 +4,7 @@ import Button from '../components/Button';
 import SettingsSection from '../components/SettingsSection';
 import UserManagement from '../components/UserManagement';
 import TestDefaults from '../components/TestDefaults';
+import { API_BASE_URL } from '../lib/api';
 
 interface Operator {
   username: string;
@@ -34,7 +35,7 @@ export default function Settings() {
 
   const fetchOperators = async () => {
     try {
-      const response = await fetch('http://localhost:3002/api/operators', {
+      const response = await fetch(`${API_BASE_URL}/operators`, {
         headers: {
           'X-Operator': localStorage.getItem('operator') || '',
         },
@@ -54,7 +55,7 @@ export default function Settings() {
     setSuccess('');
 
     try {
-      const response = await fetch('http://localhost:3002/api/operators', {
+      const response = await fetch(`${API_BASE_URL}/operators`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

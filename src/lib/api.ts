@@ -7,7 +7,11 @@ export interface PdfLog {
   pdfData: string;
 }
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || process.env.REACT_APP_API_URL || 'http://localhost:3002/api';
+// Get the API URL from environment variables, remove /api suffix as it's added in the URL construction
+const API_BASE = import.meta.env.VITE_API_URL?.replace(/\/api$/, '') || import.meta.env.VITE_API_BASE_URL || 'http://localhost:3002';
+export const API_BASE_URL = `${API_BASE}/api`;
+
+console.log('Using API URL:', API_BASE_URL); // This will help us debug
 
 function getAuthHeaders() {
   const token = localStorage.getItem('auth_token');
@@ -98,6 +102,32 @@ export async function deleteLog(id: number): Promise<boolean> {
     return data.success;
   } catch (error) {
     console.error('Error deleting log:', error);
+    throw error;
+  }
+}
+
+export async function login(username: string, password: string): Promise<string> {
+  try {
+    console.log('Attempting login with:', { username });
+    const response = await fetch(`${API_BASE_URL}/auth/login`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ username, password }),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      console.error('Login failed:', errorData);
+      throw new Error(errorData.message || 'Login failed');
+    }
+
+    const data = await response.json();
+    console.log('Login successful');
+    return data.token;
+  } catch (error) {
+    console.error('Login error:', error);
     throw error;
   }
 }

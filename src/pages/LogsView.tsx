@@ -3,7 +3,7 @@ import { Search, FileText, Filter, Download, Trash2 } from 'lucide-react';
 import Button from '../components/Button';
 import { useAuth } from '../contexts/AuthContext';
 import { format } from 'date-fns';
-import { deleteLog } from '../lib/api';
+import { deleteLog, API_BASE_URL } from '../lib/api';
 
 interface PdfLog {
   id: number;
@@ -14,8 +14,6 @@ interface PdfLog {
   pdf_data: string;
   created_at: string;
 }
-
-const API_BASE_URL = 'http://localhost:3002/api';
 
 export default function LogsView() {
   const { token } = useAuth();
