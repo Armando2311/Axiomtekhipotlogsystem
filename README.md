@@ -1,6 +1,6 @@
 # Hipot Logs System
 
-A web application for managing and storing work orders and test logs.
+A web application for managing and storing Hipot/Ground Bond test logs.
 
 ## Features
 
@@ -13,7 +13,7 @@ A web application for managing and storing work orders and test logs.
 
 ## Business Value & Efficiency
 
-The Hipot Logs System is designed to revolutionize the production line testing process at Axiomtek by:
+The Hipot Logs System is designed to streamline the production line Hipot testing process at Axiomtek by:
 
 1. **Streamlined Testing Process**
    - Eliminate paper-based logging
@@ -31,7 +31,6 @@ The Hipot Logs System is designed to revolutionize the production line testing p
    - Reduce test logging time by 75%
    - Eliminate manual filing and paperwork
    - Instant access to test results across departments
-   - Quick identification of testing bottlenecks
 
 4. **Cost Reduction**
    - Minimize paper waste
