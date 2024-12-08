@@ -11,6 +11,124 @@ A web application for managing and storing work orders and test logs.
 - Secure API endpoints
 - Cross-platform compatibility
 
+## Business Value & Efficiency
+
+The Hipot Logs System is designed to revolutionize the production line testing process at Axiomtek by:
+
+1. **Streamlined Testing Process**
+   - Eliminate paper-based logging
+   - Reduce human error in data entry
+   - Instant PDF generation for test reports
+   - Real-time access to test results
+
+2. **Quality Assurance**
+   - Maintain comprehensive test history
+   - Track testing patterns and failures
+   - Ensure compliance with testing standards
+   - Quick access to historical data for audits
+
+3. **Production Efficiency**
+   - Reduce test logging time by 75%
+   - Eliminate manual filing and paperwork
+   - Instant access to test results across departments
+   - Quick identification of testing bottlenecks
+
+4. **Cost Reduction**
+   - Minimize paper waste
+   - Reduce storage costs for physical documents
+   - Lower labor costs for document management
+   - Prevent costly errors in test documentation
+
+## Technology Stack
+
+### Frontend
+- **React + TypeScript**
+  - Strong type safety prevents runtime errors
+  - Component-based architecture for maintainable code
+  - Rich ecosystem of testing and development tools
+  - Superior developer experience with IDE support
+
+- **Vite**
+  - Lightning-fast development server
+  - Optimized production builds
+  - Hot Module Replacement (HMR)
+  - Modern ESM-based development
+
+- **Tailwind CSS**
+  - Rapid UI development
+  - Consistent design system
+  - Responsive design out of the box
+  - Minimal CSS bundle size
+
+### Backend
+- **Node.js + Express**
+  - Fast and efficient server runtime
+  - Easy to maintain and scale
+  - Excellent for handling concurrent requests
+  - Rich middleware ecosystem
+
+- **SQLite Database**
+  - Zero-configuration required
+  - Perfect for single-instance applications
+  - Built-in data persistence
+  - Easy backup and version control
+  - No separate database server needed
+
+### Security
+- **JWT Authentication**
+  - Secure, stateless authentication
+  - Cross-domain compatibility
+  - Role-based access control
+  - Protection against common security threats
+
+### Infrastructure
+- **Nginx**
+  - Robust reverse proxy
+  - Load balancing capabilities
+  - Static file serving
+  - SSL/TLS termination
+  - Security features
+
+### PDF Generation
+- **jsPDF**
+  - Client-side PDF generation
+  - Customizable templates
+  - No server processing required
+  - Fast document creation
+
+### Development Tools
+- **Git**
+  - Version control
+  - Collaborative development
+  - Code review process
+  - Deployment automation
+
+## Why These Technologies?
+
+1. **Production Reliability**
+   - TypeScript catches errors before they reach production
+   - SQLite provides robust data persistence
+   - JWT ensures secure access control
+   - Nginx offers production-grade serving capabilities
+
+2. **Development Speed**
+   - React's component model speeds up development
+   - Tailwind CSS enables rapid UI iteration
+   - Vite's fast refresh improves developer productivity
+   - Express simplifies API development
+
+3. **Maintainability**
+   - TypeScript makes code self-documenting
+   - Component-based architecture enables code reuse
+   - Clear separation of concerns
+   - Industry-standard tools and practices
+
+4. **Scalability**
+   - Nginx enables horizontal scaling
+   - Node.js handles concurrent requests efficiently
+   - SQLite can be upgraded to PostgreSQL if needed
+   - Modular architecture allows for easy updates
+
 ## Prerequisites
 
 - Node.js (v18 or later)
